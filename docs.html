@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <link rel="stylesheet" href="style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dr Snow's Map Documentation</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        height: 100vh;
+      }
+      .header {
+        width: 100%;
+        background-color: #f5f5f5;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .header nav {
+        padding: 16px 80px;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      nav p {
+        font-size: 20px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      nav a {
+        text-decoration: none;
+        color: rgb(2, 65, 241);
+        font-size: 16px;
+        font-weight: bold;
+      }
+
+      .container {
+        width: min(65ch, 100%);
+        padding: 20px 20px;
+        margin: 0 auto;
+        margin-top: 20px;
+      }
+
+      .container h1 {
+        margin-bottom: 20px;
+      }
+
+      .container img {
+        width: 100%;
+        margin-bottom: 20px;
+        aspect-ratio: 4 / 3;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <nav>
+        <p>Dr Snow's Map</p>
+        <a href="index.html">Visualization</a>
+      </nav>
+    </header>
+
+    <div class="container">
+      <h1>Dr Snow's Map Documentation</h1>
+      <p>
+        This is a visualization of the 1854 cholera outbreak in London. The
+        visualization is based on the data from the
+        <a href="https://www.ph.ucla.edu/epi/snow/mapsbroadstreet.html"
+          >original paper</a
+        >
+        by John Snow.
+      </p>
+      <p>
+        The visualization is built using <a href="https://d3js.org/">D3.js</a>
+      </p>
+      <br />
+      <p>
+        Dr. John Snow’s map established a relationship between cholera and
+        contaminated water during London’s 1854 cholera epidemic. In this
+        project, I try to recreate that map using modern tools and processes,
+        javascript and d3.js, to be viewed on webpages. Using the datasets of
+        street mappings, pump locations, deathdays of victims, and the ages and
+        gender of these victims, I use d3.js to manipulate the data into a
+        visual representation.
+      </p>
+
+      <br />
+
+      <p>
+        With the given datasets, some of the rational relationships to establish
+        are how the position of the pumps relates to the number of deaths in the
+        area, how the deaths occur across a range of ages, and the number of
+        deaths per period during the epidemic. To make those relationships, a
+        map, a horizontal bar chart, and a pie chart were chosen as the
+        visualizations of choice.
+      </p>
+
+      <br />
+      <img src="./images/sketch.jpeg" alt="sketch of viz" />
+      <br>
+
+      <p>
+        On the map, I plotted the various pumps within the street and also the
+        deaths across the street, differentiating between males and females. The
+        horizontal bar chart seeks to show how many deaths occur per day during
+        the said period. On the x axis, the number of deaths and the date on the
+        y axis. The bars are filled with red to indicate danger(death). The
+        number of deaths are also indicated at the end of the bars. The bar
+        chart also interacts with the map when a bar in hovered over. The map
+        shows how many deaths occured on the hovered item. Since the dataset for
+        deaths don’t include the date of death, the map merely shows the number
+        of deaths that corresponds to the hovered bar.
+      </p>
+    </div>
+  </body>
+</html>

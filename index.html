@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <title>London's 1854 Cholera Epidemic</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        height: 100vh;
+      }
+      .chart-area {
+        display: flex;
+        flex: 1;
+        width: 100%;
+        height: 100%;
+        column-gap: 2rem;
+      }
+
+      .side-charts,
+      .main-chart {
+        display: flex;
+        flex-direction: column;
+        width: 50%;
+        height: 100%;
+        padding: 16px;
+      }
+
+      .filters {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+        column-gap: 2rem;
+      }
+
+      .filters label {
+        cursor: pointer;
+      }
+
+      .header {
+        width: 100%;
+        background-color: #f5f5f5;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .header nav {
+        padding: 16px 80px;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      nav p {
+        font-size: 20px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      nav a {
+        text-decoration: none;
+        color: rgb(2, 65, 241);
+        font-size: 16px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <nav>
+        <p>Dr Snow's Map</p>
+        <a href="docs.html">Documentation</a>
+      </nav>
+    </header>
+    <h3 style="margin: 1rem 0;">London's 1854 Cholera Epidemic</h3>
+
+    <div class="chart-area">
+      <div class="main-chart">
+        <div id="streets-map"></div>
+      </div>
+
+      <div class="side-charts">
+        <div id="deaths-chart"></div>
+        <div id="pie-chart"></div>
+      </div>
+    </div>
+    <script>
+      const mapWidth = d3.select(".main-chart").node().clientWidth;
+      const mapHeight = d3.select(".main-chart").node().clientHeight;
+      const legendArray = ["Male", "Female", "Pump"];
+
+      const tooltip = d3
+        .select("body")
+        .append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("background-color", "white")
+        .style("border", "1px solid #ccc")
+        .style("border-radius", "5px")
+        .style("padding", "5px")
+        .style("pointer-events", "none");
+
+      Promise.all([
+        d3.json("datasets/streets.json"),
+        d3.csv("datasets/pumps.csv"),
+        d3.csv("datasets/deathdays.csv"),
+        d3.csv("datasets/deaths_age_sex.csv"),
+      ]).then(function ([streets, pumps, deathdays, deaths_age_sex]) {
+        const streetsMap = d3
+          .select("#streets-map")
+          .append("svg")
+          .attr("width", mapWidth)
+          .attr("height", mapHeight - 40)
+          .append("g")
+          .attr("transform", "translate(0, 0)");
+
+        const ageMappings = d3
+          .scaleOrdinal()
+          .domain([...new Set(deaths_age_sex.map((d) => d.age))].sort())
+          .range(["0-10", "11-21", "21-40", "41-60", "61-80", ">80"]);
+
+        //scales
+        const xScale = d3
+          .scaleLinear()
+          .domain(
+            d3.extent(
+              streets.map((dataPoint) => dataPoint.map((d) => d.x)).flat()
+            )
+          )
+          .range([0, mapWidth]);
+
+        const yScale = d3
+          .scaleLinear()
+          .domain(
+            d3.extent(
+              streets.map((dataPoint) => dataPoint.map((d) => d.y)).flat()
+            )
+          )
+          .range([mapHeight - 150, 0]);
+
+        const mapGenerator = d3
+          .line()
+          .x((d) => xScale(d.x))
+          .y((d) => yScale(d.y));
+
+        streets.map((street) => {
+          streetsMap
+            .append("path")
+            .attr("d", mapGenerator(street))
+            .attr("stroke", "#ccc")
+            .attr("fill", "none");
+        });
+
+        zoom = d3.zoom().on("zoom", function (e) {
+          streetsMap.attr("transform", e.transform);
+        });
+
+        streetsMap.call(zoom);
+
+        const streetPumps = streetsMap
+          .append("g")
+          .selectAll(".pumps")
+          .data(pumps)
+          .enter()
+          .append("image")
+          .attr("xlink:href", "images/pump.svg")
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("x", (d) => xScale(d.x) - 10)
+          .attr("y", (d) => yScale(d.y) - 10);
+
+        const deaths = streetsMap
+          .append("g")
+          .selectAll(".deaths")
+          .data(deaths_age_sex)
+          .enter()
+          .append("image")
+          .attr("class", "deaths")
+          .attr("xlink:href", (d) =>
+            +d.gender === 0 ? "images/male.svg" : "images/female.svg"
+          )
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("x", (d) => xScale(+d.x) - 10)
+          .attr("y", (d) => yScale(+d.y) - 10)
+          .attr("opacity", 0.8)
+          .style("cursor", "pointer")
+          .on("mousemove", function (event, d) {
+            tooltip.transition().style("opacity", 1);
+            tooltip
+              .html(
+                `Sex: ${
+                  d.gender === "0" ? "Male" : "Female"
+                }<br/>Age: ${ageMappings(d.age)}`
+              )
+              .style("left", `${event.pageX + 10}px`)
+              .style("top", `${event.pageY - 10}px`)
+              .style("font-size", "12px");
+          })
+          .on("mouseout", function () {
+            tooltip.transition().style("opacity", 0);
+          });
+
+        const legend = streetsMap
+          .append("g")
+          .attr("class", "legend")
+          .attr("transform", `translate(10, ${mapHeight - 100})`);
+
+        legend
+          .selectAll(".legend-item")
+          .data(legendArray)
+          .enter()
+          .append("image")
+          .attr("xlink:href", (d) => `images/${d.toLowerCase()}.svg`)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("x", (d, i) => i * 120)
+          .attr("y", 0);
+
+        legend
+          .selectAll(".legend-text")
+          .data(legendArray)
+          .enter()
+          .append("text")
+          .attr("x", (d, i) => i * 120 + 25)
+          .attr("y", 15)
+          .text((d) => d)
+          .style("font-size", "16px")
+          .style("font-weight", "bold");
+
+        // Time line chart
+        const deathsChart = d3
+          .select("#deaths-chart")
+          .append("svg")
+          .attr("width", mapWidth - 60)
+          .attr("height", mapHeight / 2)
+          .append("g")
+          .attr("transform", "translate(60, 0)");
+
+        const timelineXScale = d3
+          .scaleLinear()
+          .domain(d3.extent(deathdays, (d) => +d.deaths))
+          .range([0, mapWidth - 150])
+          .nice();
+
+        const timelineYScale = d3
+          .scaleBand()
+          .domain(deathdays.map((d) => d.date))
+          .range([mapHeight / 2 - 100, 0])
+          .padding(0.1);
+
+        const timelineXAxis = d3
+          .axisBottom(timelineXScale)
+          .tickSize(-mapHeight / 2);
+        const timelineYAxis = d3.axisLeft(timelineYScale);
+
+        deathsChart
+          .append("g")
+          .attr("class", "x-axis")
+          .attr("transform", `translate(0, ${mapHeight / 2 - 100})`)
+          .call(timelineXAxis)
+          .call((g) => g.selectAll(".domain").attr("stroke", "#ccc"))
+          .call((g) =>
+            g
+              .selectAll("line")
+              .attr("stroke", "#ccc")
+              .attr("stroke-dasharray", "2,2")
+          )
+          .selectAll("text")
+          .style("text-anchor", "middle")
+          .style("font-size", "12px")
+          .style("fill", "#cccc");
+
+        deathsChart
+          .append("g")
+          .attr("class", "y-axis")
+          .attr("transform", `translate(0, 0)`)
+          .call(timelineYAxis)
+          .call((g) => g.selectAll(".domain").attr("stroke", "#ccc"))
+          .call((g) => g.selectAll("line").attr("stroke", "#ccc"))
+          .selectAll("text")
+          .style("font-size", "10px")
+          .style("fill", "#cccc");
+
+        const timelineBars = deathsChart
+          .append("g")
+          .selectAll(".timeline-bar")
+          .data(deathdays)
+          .enter()
+          .append("rect")
+          .attr("class", "timeline-bar")
+          .attr("x", 0)
+          .attr("y", (d) => timelineYScale(d.date))
+          .attr("width", (d) => timelineXScale(+d.deaths))
+          .attr("height", timelineYScale.bandwidth())
+          .attr("fill", "#f2150a")
+          .style("cursor", "pointer")
+          .on("mousemove", function (event, d) {
+            tooltip.style("opacity", 1);
+            tooltip
+              .html(`Date: ${d.date}<br/>Deaths: ${d.deaths}`)
+              .style("left", `${event.pageX + 10}px`)
+              .style("top", `${event.pageY - 10}px`)
+              .style("font-size", "12px");
+
+            d3.selectAll(".deaths")
+              .transition()
+              .duration(50)
+              .attr("opacity", (death, i) => (i + 1 > d.deaths ? 0 : 0.8));
+          })
+          .on("mouseout", function () {
+            tooltip.style("opacity", 0);
+            d3.selectAll(".deaths")
+              .transition()
+              .duration(50)
+              .attr("opacity", 0.8);
+          });
+
+        //append text to the bars
+        deathsChart
+          .append("g")
+          .selectAll(".timeline-bar-text")
+          .data(deathdays)
+          .enter()
+          .append("text")
+          .attr("class", "timeline")
+          .attr(
+            "x",
+            (d) => timelineXScale(+d.deaths) + timelineYScale.bandwidth() / 2
+          )
+          .attr("y", (d) => timelineYScale(d.date) + timelineYScale.bandwidth())
+          .text((d) => d.deaths)
+          .style("font-size", "12px")
+          .style("fill", "#cccc")
+          .style("pointer-events", "none");
+
+        // x axis label
+        deathsChart
+          .append("text")
+          .attr("x", mapWidth / 2 - 60)
+          .attr("y", mapHeight / 2 - 65)
+          .text("Number of deaths")
+          .style("font-size", "16px")
+          .style("text-anchor", "middle");
+
+        // y axis label
+        deathsChart
+          .append("text")
+          .attr("x", -mapHeight / 5)
+          .attr("y", -45)
+          .text("Date")
+          .style("font-size", "16px")
+          .attr("transform", "rotate(-90)");
+
+        // title
+        deathsChart
+          .append("text")
+          .attr("x", mapWidth / 2 - 60)
+          .attr("y", 20)
+          .text("Number of deaths per day")
+          .style("font-size", "20px")
+          .style("text-anchor", "middle");
+
+        // pie chart
+        const ageGroupings = d3.group(deaths_age_sex, (d) => +d.age);
+
+        const pieChart = d3
+          .select("#pie-chart")
+          .append("svg")
+          .attr("width", mapWidth - 60)
+          .attr("height", mapHeight / 2)
+          .append("g")
+          .attr(`transform`, `translate(${mapWidth / 2}, ${mapHeight / 4})`);
+
+        const colorScale = d3.scaleOrdinal().range(d3.schemeSet2);
+
+        const pie = d3
+          .pie()
+          .value((d) => d[1].length)
+          .sort(null);
+
+        const arc = d3
+          .arc()
+          .innerRadius(0)
+          .outerRadius(150);
+
+        const piearcs = pieChart
+          .selectAll(".arc")
+          .data(pie(ageGroupings))
+          .enter()
+          .append("g")
+          .attr("class", "arc");
+
+        piearcs
+          .append("path")
+          .attr("d", arc)
+          .attr("fill", (d) => colorScale(d.data[0]))
+          .style("cursor", "pointer")
+          .on("mousemove", function (event, d) {
+            tooltip.style("opacity", 1);
+            tooltip
+              .html(
+                `Age: ${ageMappings(d.data[0].toString())}<br/>Deaths: ${
+                  d.data[1].length
+                }`
+              )
+              .style("left", `${event.pageX + 10}px`)
+              .style("top", `${event.pageY - 10}px`)
+              .style("font-size", "12px");
+
+            d3.selectAll(".deaths")
+              .transition()
+              .duration(50)
+              .attr("opacity", (val) => (d.data[0] === +val.age ? 0.8 : 0));
+          })
+          .on("mouseout", function () {
+            tooltip.style("opacity", 0);
+            d3.selectAll(".deaths")
+              .transition()
+              .duration(50)
+              .attr("opacity", 0.8);
+          });
+
+        piearcs
+          .append("text")
+          .attr("transform", (d) => `translate(${arc.centroid(d)})`)
+          .attr("text-anchor", "middle")
+          .text((d) => ageMappings(d.data[0].toString()))
+          .style("font-size", "12px")
+          .style("fill", "black")
+          .style("pointer-events", "none");
+
+        piearcs
+          .append("text")
+          .attr(
+            "transform",
+            (d) =>
+              `translate(${arc.centroid(d)[0]}, ${arc.centroid(d)[1] + 20})`
+          )
+          .attr("text-anchor", "middle")
+          .text((d) => d.data[1].length)
+          .style("font-size", "12px")
+          .attr("font-weight", "bold")
+          .style("fill", "black")
+          .style("pointer-events", "none");
+
+        const pieChartTitle = pieChart
+          .append("text")
+          .attr("class", "pie-chart-title")
+          .attr("x", 0)
+          .attr("y", -mapHeight / 4 + 50)
+          .text("Age distribution of deaths")
+          .style("font-size", "20px")
+          .style("text-anchor", "middle");
+      });
+    </script>
+  </body>
+</html>
