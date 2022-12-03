@@ -99,6 +99,13 @@
         <div id="pie-chart"></div>
       </div>
     </div>
+     <div style="margin-left: auto; 
+    margin-right: 0;">
+      <h4 >
+        © Copyrights Ganesh Pinnika
+      </h4>
+     
+    </div>
     <script>
       const mapWidth = d3.select(".main-chart").node().clientWidth;
       const mapHeight = d3.select(".main-chart").node().clientHeight;
@@ -464,9 +471,9 @@
           .append("text")
           .attr("class", "pie-chart-title")
           .attr("x", 0)
-          .attr("y", -mapHeight / 4 + 50)
+          .attr("y", -mapHeight / 4 + 9)
           .text("Age distribution of deaths")
-          .style("font-size", "20px")
+          .style("font-size", "15px")
           .style("text-anchor", "middle");
       });
     </script>
